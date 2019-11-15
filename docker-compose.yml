@@ -1,0 +1,60 @@
+version: '3'
+
+services:
+  db:
+    container_name: db
+    image: postgres:alpine
+    restart: always
+    volumes:
+      - ${DATABASE_DATA_DIR}:/var/lib/postgresql/data
+    env_file:
+      - db.env
+
+  app:
+    container_name: app
+    image: nextcloud:apache
+    restart: always
+    volumes:
+      - ${NEXTCLOUD_DATA_DIR}:/var/www/html
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=nextcloud
+    env_file:
+      - db.env
+    depends_on:
+      - db
+
+  letsencrypt:
+    image: linuxserver/letsencrypt
+    container_name: letsencrypt
+    restart: always
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "80:80"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TIMEZONE}
+      - URL=${DOMAIN}
+      - SUBDOMAINS={SUBDOMAIN}
+      - VALIDATION=http
+      - ONLY_SUBDOMAINS=true
+    volumes:
+      - ${LETSENCRYPT_DIR}:/etc/letsencrypt
+
+  apache:
+    build: ./apache
+    restart: always
+    ports: 
+      - "443:443"
+    depends_on: 
+      - app
+      - letsencrypt
+    volumes:
+      - ${LETSENCRYPT_DIR}:/letsencrypt
+
+
+
+
+
